@@ -1,0 +1,141 @@
+#from tkinter import *
+#from tkinter import Tk, Label, Entry, Button, StringVar
+import random
+import string
+import re
+
+banned_passwords = [
+    "password", "123456", "12345678", "123456789", "12345", "qwerty", "abc123",
+    "letmein", "monkey", "111111", "iloveyou", "admin", "welcome", "password1",
+    "1234567", "123123", "qwertyuiop"
+]
+
+banned_usernames = [
+    "admin", "administrator", "root", "user", "guest", "test", "username", "David",
+    "sysadmin", "superuser", "Alex", "manager"
+]
+
+def password_generator(min_length, numbers=True, special_characters=True):
+    letters = string.ascii_letters  # All uppercase and lowercase letters
+    digits = string.digits
+    special_chars = string.punctuation  # Special characters
+
+    characters = letters # all passwords will contain letters by default
+    if numbers: # Include digits if specified
+        characters += digits # Append the digits to the characters string
+    if special_characters: # Include special characters if specified
+        characters += special_chars # Append the special characters to the characters string
+    
+    password = "" #Initialise an empty password string
+    meets_criteria = False #Flag to check if the password meets the criteria
+    has_number = False #Flag to check if the password contains a number
+    has_special = False #Flag to check if the password contains a special character
+
+    while not meets_criteria or len(password) < min_length:
+        new_char = random.choice(characters) # Randomly select a character from the characters string
+        password += new_char # Append the new character to the password string
+
+        if new_char in digits: # Check if the new character is a digit
+            has_number = True # Set the has_number flag to True
+        elif new_char in special_chars: # Check if the new character is a special character
+            has_special = True
+        
+        meets_criteria = True
+        if numbers and not has_number: # If numbers are required and no number is found, then it does not meet the criteria. Hence, set meets_criteria to False.
+            meets_criteria = False
+        if special_characters and not has_special: # If special characters are required and no special character is found. This is done regardless of if the previous if statement was true or false.
+            meets_criteria = False
+        
+    return password # Return the generated password once it meets the criteria and is of the minimum length
+
+def password_strength(password):
+    score = 0
+    pwd_length = len(password)
+    if pwd_length >= 8 and pwd_length <= 10:
+        score += 1
+    elif pwd_length > 10 and pwd_length <= 14:
+        score += 2
+    elif pwd_length > 14:
+        score += 3
+    
+    if password.lower() not in banned_passwords:
+        score += 1
+
+    if re.search(r"(?=.*[a-z]).*", password):
+        score += 1
+    if re.search(r"(?=.*[A-Z]).*", password):
+        score += 1
+    if re.search(r"(?=.*\d).*", password): # Check for at least one digit, \d for unicode digits/strings since it is more inclusive and VSCode uses UTF-8 encoding
+        score += 1 # If you have at least a digit, add 1 to the score. More than one digit does not increase the score.
+    if re.search(r"(?=.*[!@#$%^&*()_+{}|:<>?]).*", password): # Check for at least one special character
+        score += 1
+
+    # Penalize for 4 or more repeating characters in a row
+    if re.search(r"(.)\1{3,}", password): # quantifier {3,} means 3 or more occurrences of the preceding character, thus it will match 4 or more adjacent repeating characters
+        score -= 1 # penalised due to decreasing password entropy and establishing a pattern that is easy to guess
+
+    return score
+
+# Function to classify password strength
+def classify_password_strength(score):
+    if score >= 7:
+        return "Strong"
+    elif score >= 5:
+        return "Moderate"
+    else:
+        return "Weak"
+
+# Username input and validation loop
+while True:
+    username = input("Enter your username: ").strip()
+    if username in banned_usernames:
+        print("This username is not allowed. Please choose a different username.")
+        continue
+    if len(username) > 30 or len(username) < 1:
+        print("Username cannot be empty or greater than 30 characters. Please enter a valid username.")
+        continue
+    break  # Only break if all checks pass
+
+# Ask if the user wants a randomly generated password, only accept 'y' or 'n'
+while True:
+    use_random = input("Do you want to use a randomly generated password? (y/n): ").strip().lower()
+    if use_random in ("y", "n"):
+        break
+    print("Please enter 'y' or 'n'.")
+
+if use_random == "y":
+    while True:
+        try:
+            min_length = int(input("Enter the minimum length for the password (at least 8): "))
+            if min_length >= 8:
+                break
+            print("Minimum length must be at least 8.")
+        except ValueError:
+            print("Please enter a valid number.")
+    has_numbers = input("Should the password include numbers? (y/n): ").strip().lower() == 'y'
+    has_special = input("Should the password include special characters? (y/n): ").strip().lower() == 'y'
+    password = password_generator(min_length, has_numbers, has_special)
+    print(f"Generated password: {password}")
+    # Check password strength for generated password
+    score = password_strength(password)
+    strength = classify_password_strength(score)
+    print(f"Password strength: {strength})")
+else:
+    while True:
+        password = input("Enter your own password (8-64 characters): ")
+        if len(password) > 64:
+            print("Password must be 64 characters or fewer. Please try again.")
+            continue
+        if len(password) < 8:
+            print("Password must be at least 8 characters long. Please try again.")
+            continue
+        confirmation = input("Re-enter your password to confirm: ")
+        if password != confirmation:
+            print("Passwords do not match. Please try again.")
+            continue
+        # Check password strength
+        score = password_strength(password)
+        strength = classify_password_strength(score)
+        print(f"Password strength: {strength})")
+        break
+    print(f"Password saved successfully.")
